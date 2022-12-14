@@ -1,66 +1,67 @@
-import { useState, useEffect } from 'react';
-import { nanoid } from 'nanoid';
+import { Component } from 'react';
 
-import ContactForm from './ContactForm';
-import Filter from './Filter';
-import ContactList from './ContactList';
+import Section from './Section/Section';
+import Statistics from './Statistics/Statistics';
+import FeedbackOptions from './FeedbackOptions/FeedbackOptions';
+import Notification from 'components/Notification/Notification';
 
-import { Container, PhonebookTitle, ContactsTitle } from './App.styled';
-
-export const App = () => {
-  const stateContacts = [
-    { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-    { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-    { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-    { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-  ];
-
-  const [contacts, setContacts] = useState(
-    JSON.parse(window.localStorage.getItem('contacts'))
-  );
-  const [filter, setFilter] = useState('');
-
-  useEffect(() => {
-    window.localStorage.setItem('contacts', JSON.stringify(contacts));
-  }, [contacts, stateContacts]);
-
-  const addContact = (name, number) => {
-    const newContact = {
-      id: nanoid(),
-      name,
-      number,
-    };
-
-    setContacts([...contacts, newContact]);
+export class App extends Component {
+  state = {
+    good: 0,
+    neutral: 0,
+    bad: 0,
   };
 
-  const deleteContact = id => {
-    setContacts(contacts.filter(contact => id !== contact.id));
+  countTotalFeedback = () => {
+    const { good, neutral, bad } = this.state;
+
+    return good + neutral + bad;
   };
 
-  const handleFilterChange = e => {
-    const { value } = e.target;
+  countPositiveFeedbackPercentage = () => {
+    const { good } = this.state;
 
-    setFilter(value);
+    const feedbackPercentage = (good / this.countTotalFeedback()) * 100;
+
+    return feedbackPercentage.toFixed(0) + '%';
   };
 
-  const visibleContacts = contacts.filter(({ name }) => {
-    const normalizedFilter = name.toLowerCase().includes(filter.toLowerCase());
+  onLeaveFeedback = e => {
+    const { name } = e.target;
+    const initialState = this.state[name];
 
-    return normalizedFilter;
-  });
+    this.setState({ [name]: initialState + 1 });
+  };
 
-  return (
-    <Container>
-      <PhonebookTitle>Phonebook</PhonebookTitle>
-      <ContactForm onSubmit={addContact} contacts={contacts}></ContactForm>
+  render() {
+    const { good, neutral, bad } = this.state;
 
-      <ContactsTitle>Contacts</ContactsTitle>
-      <Filter filter={filter} onChange={handleFilterChange} />
-      <ContactList
-        visibleContacts={visibleContacts}
-        deleteContact={deleteContact}
-      />
-    </Container>
-  );
-};
+    const optionsKeys = Object.keys(this.state);
+
+    const isEmptyFeedback = this.countTotalFeedback() === 0;
+
+    return (
+      <div>
+        <Section title="Please leave feedback">
+          <FeedbackOptions
+            options={optionsKeys}
+            onLeaveFeedback={this.onLeaveFeedback}
+          />
+        </Section>
+        <Section title="Statistics">
+          {isEmptyFeedback ? (
+            <Notification message="There is no feedback" />
+          ) : (
+            <Statistics
+              good={good}
+              neutral={neutral}
+              bad={bad}
+              total={this.countTotalFeedback()}
+              positivePercentage={this.countPositiveFeedbackPercentage()}
+            />
+          )}
+        </Section>
+      </div>
+    );
+  }
+}
